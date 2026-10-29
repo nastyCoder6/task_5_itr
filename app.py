@@ -18,7 +18,7 @@ st.title("Weyland-Yutani Operations Analysis")
 
 st.subheader("1. Overview (t)")
 summary_df = analyzer.get_summary_table()
-st.dataframe(summary_df, width="content")
+st.dataframe(summary_df, width="stretch")
 
 
 st.subheader("2. Anomaly Detection")
@@ -71,7 +71,7 @@ with st.expander(f"View Detected Anomalies ({len(outliers_df)} found)", expanded
     else:
         st.dataframe(
             outliers_df.sort_values(["Mine", "Date"]),
-            width="content",
+            width="stretch",
             hide_index=True,
         )
 
@@ -150,7 +150,7 @@ if not plot_df.empty:
             layers.append(trend_layer)
 
     final_chart = alt.layer(*layers).interactive()
-    st.altair_chart(final_chart, width="content")
+    st.altair_chart(final_chart, width="stretch")
 else:
     st.warning("Please select at least one mine to display the chart.")
 
