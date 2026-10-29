@@ -6,6 +6,7 @@ import streamlit as st
 from analyzer import DataAnalyzer
 from cleaner import DataCleaner
 from loader import DataLoader
+from pdf import build_pdf_report
 
 raw_df = DataLoader().load_data()
 df = DataCleaner(raw_df).get_clean_df()
@@ -17,7 +18,7 @@ st.title("Weyland-Yutani Operations Analysis")
 
 st.subheader("1. Overview (t)")
 summary_df = analyzer.get_summary_table()
-st.dataframe(summary_df, use_container_width=True)
+st.dataframe(summary_df, width="content")
 
 
 st.subheader("2. Anomaly Detection")
@@ -32,12 +33,13 @@ if anomaly_test == "IQR Rule":
         "IQR Multiplier:", min_value=0.5, max_value=3.0, value=1.5, step=0.1
     )
     outliers_df = analyzer.get_anomalies_iqr(multiplier=multiplier)
-
+    metric = multiplier
 elif anomaly_test == "Z-Score":
     threshold = st.slider(
         "Z-Score Threshold:", min_value=1.0, max_value=4.0, value=2.5, step=0.1
     )
     outliers_df = analyzer.get_anomalies_zscore(threshold=threshold)
+    metric = threshold
 
 elif anomaly_test == "Moving Average Distance (%)":
     col_a, col_b = st.columns(2)
@@ -50,6 +52,7 @@ elif anomaly_test == "Moving Average Distance (%)":
             "Distance Threshold (%):", min_value=5, max_value=100, value=25, step=5
         )
     outliers_df = analyzer.get_anomalies_ma(window=window, threshold_pct=pct / 100.0)
+    metric = [window, pct]
 
 elif anomaly_test == "Grubbs' Test":
     alpha = st.slider(
@@ -60,6 +63,7 @@ elif anomaly_test == "Grubbs' Test":
         step=0.01,
     )
     outliers_df = analyzer.get_anomalies_grubbs(alpha=alpha)
+    metric = alpha
 
 with st.expander(f"View Detected Anomalies ({len(outliers_df)} found)", expanded=True):
     if outliers_df.empty:
@@ -67,7 +71,7 @@ with st.expander(f"View Detected Anomalies ({len(outliers_df)} found)", expanded
     else:
         st.dataframe(
             outliers_df.sort_values(["Mine", "Date"]),
-            use_container_width=True,
+            width="content",
             hide_index=True,
         )
 
@@ -146,6 +150,25 @@ if not plot_df.empty:
             layers.append(trend_layer)
 
     final_chart = alt.layer(*layers).interactive()
-    st.altair_chart(final_chart, use_container_width=True)
+    st.altair_chart(final_chart, width="content")
 else:
-    st.warning("Please select at least one mine or Total to display the chart.")
+    st.warning("Please select at least one mine to display the chart.")
+
+
+st.divider()
+
+st.subheader("Export")
+st.markdown("Generate and download a PDF version of current dashboard.")
+
+
+if st.button("Generate", type="primary"):
+    pdf_data = build_pdf_report(
+        summary_df, outliers_df, final_chart, anomaly_test, metric
+    )
+
+    st.download_button(
+        label="Download",
+        data=pdf_data,
+        file_name="WY_Extraction_Report.pdf",
+        mime="application/pdf",
+    )
